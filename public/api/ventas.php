@@ -9,9 +9,16 @@ require_api_key();
 
 $method = require_method(['GET', 'POST', 'PUT', 'DELETE']);
 
+/**
+ * Canales de compra que acepta la columna VENTA.canal.
+ * El trigger trg_venta_seguimiento solo registra APP y WEB en la bitacora:
+ * una venta de MOSTRADOR ya se atendio en persona.
+ */
+const CANALES = ['APP', 'WEB', 'MOSTRADOR'];
+
 function venta_select(): string
 {
-    return 'SELECT v.id_venta, v.fecha, v.total,
+    return 'SELECT v.id_venta, v.fecha, v.total, v.canal,
                    c.id_cliente, c.nombre_cliente, c.ap_paterno_cliente, c.ap_materno_cliente,
                    e.id_empleado, e.nombre_empleado, e.ap_paterno_empleado
             FROM VENTA v
@@ -171,7 +178,7 @@ try {
         }
 
         $stmt = $pdo->query(
-            'SELECT v.id_venta, v.fecha, v.total,
+            'SELECT v.id_venta, v.fecha, v.total, v.canal,
                     c.id_cliente, c.nombre_cliente, c.ap_paterno_cliente, c.ap_materno_cliente,
                     e.id_empleado, e.nombre_empleado, e.ap_paterno_empleado,
                     (SELECT COUNT(*) FROM DETALLE_VENTA d WHERE d.id_venta = v.id_venta) AS num_productos
@@ -196,6 +203,7 @@ try {
         $body = read_json_body();
         $idCliente = field_int($body, 'id_cliente', true, 1);
         $idEmpleado = field_int($body, 'id_empleado', true, 1);
+        $canal = field_enum($body, 'canal', CANALES, 'APP');
         $cantidades = productos_solicitados($body);
 
         // Se valida fuera de la transaccion para poder cortar con 400 limpio;
@@ -208,11 +216,12 @@ try {
         [$detalles, $total] = calcular_detalles($pdo, $cantidades);
 
         $stmt = $pdo->prepare(
-            'INSERT INTO VENTA (fecha, total, id_cliente, id_empleado)
-             VALUES (NOW(), :total, :id_cliente, :id_empleado)'
+            'INSERT INTO VENTA (fecha, total, canal, id_cliente, id_empleado)
+             VALUES (NOW(), :total, :canal, :id_cliente, :id_empleado)'
         );
         $stmt->execute([
             'total' => $total,
+            'canal' => $canal,
             'id_cliente' => $idCliente,
             'id_empleado' => $idEmpleado,
         ]);
@@ -230,6 +239,7 @@ try {
         $body = read_json_body();
         $idCliente = field_int($body, 'id_cliente', true, 1);
         $idEmpleado = field_int($body, 'id_empleado', true, 1);
+        $canal = field_enum($body, 'canal', CANALES, 'APP');
         $cantidades = productos_solicitados($body);
 
         assert_exists($pdo, 'CLIENTE', 'id_cliente', $idCliente, 'El id_cliente indicado');
@@ -252,11 +262,13 @@ try {
 
         $stmt = $pdo->prepare(
             'UPDATE VENTA
-                SET total = :total, id_cliente = :id_cliente, id_empleado = :id_empleado
+                SET total = :total, canal = :canal,
+                    id_cliente = :id_cliente, id_empleado = :id_empleado
               WHERE id_venta = :id_venta'
         );
         $stmt->execute([
             'total' => $total,
+            'canal' => $canal,
             'id_cliente' => $idCliente,
             'id_empleado' => $idEmpleado,
             'id_venta' => $id,

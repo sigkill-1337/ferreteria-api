@@ -58,15 +58,40 @@ try {
     if ($method === 'POST') {
         $data = cliente_input();
 
+        // El alta NO se hace con un INSERT directo: se delega al procedimiento
+        // almacenado sp_alta_cliente, que lleva un EXIT HANDLER para el error
+        // 1062. Asi la restriccion unica de email_cliente se atrapa dentro de
+        // la base de datos y no depende de que PHP interprete la excepcion.
         $stmt = $pdo->prepare(
-            'INSERT INTO CLIENTE (nombre_cliente, ap_paterno_cliente, ap_materno_cliente,
-                                  telefono_cliente, email_cliente)
-             VALUES (:nombre_cliente, :ap_paterno_cliente, :ap_materno_cliente,
-                     :telefono_cliente, :email_cliente)'
+            'CALL sp_alta_cliente(:nombre, :ap_paterno, :ap_materno, :telefono, :email,
+                                  @id_cliente, @codigo, @mensaje)'
         );
-        $stmt->execute($data);
+        $stmt->execute([
+            'nombre' => $data['nombre_cliente'],
+            'ap_paterno' => $data['ap_paterno_cliente'],
+            'ap_materno' => $data['ap_materno_cliente'] ?? '',
+            'telefono' => $data['telefono_cliente'],
+            'email' => $data['email_cliente'],
+        ]);
+        // Hay que cerrar el cursor del CALL antes de leer las variables de
+        // salida, o la siguiente consulta falla con "commands out of sync".
+        $stmt->closeCursor();
 
-        json_response(201, fetch_cliente($pdo, (int) $pdo->lastInsertId()));
+        $salida = $pdo
+            ->query('SELECT @id_cliente AS id_cliente, @codigo AS codigo, @mensaje AS mensaje')
+            ->fetch();
+
+        $codigo = (int) ($salida['codigo'] ?? 1);
+        $mensaje = (string) ($salida['mensaje'] ?? 'No se pudo registrar el cliente.');
+
+        if ($codigo === 1062) {
+            json_error(409, $mensaje);
+        }
+        if ($codigo !== 0) {
+            json_error(400, $mensaje);
+        }
+
+        json_response(201, fetch_cliente($pdo, (int) $salida['id_cliente']));
     }
 
     if ($method === 'PUT') {

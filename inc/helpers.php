@@ -166,6 +166,14 @@ function pdo_error(Throwable $e): void
     }
 
     switch ($code) {
+        case 1644: // SIGNAL SQLSTATE '45000' lanzado por un trigger nuestro.
+            // errorInfo[2] trae el MESSAGE_TEXT que escribimos en el trigger,
+            // no detalle interno del driver, asi que es seguro devolverlo.
+            $texto = $e instanceof PDOException && isset($e->errorInfo[2])
+                ? (string) $e->errorInfo[2]
+                : 'La operacion viola una regla de negocio.';
+            json_error(409, $texto);
+            // no break: json_error termina la ejecucion
         case 1062: // Duplicate entry
             json_error(409, 'Ya existe un registro con ese valor unico (correo, RFC, etc.).');
         case 1451: // Cannot delete or update a parent row
@@ -188,6 +196,22 @@ function assert_exists(PDO $pdo, string $table, string $pk, int $id, string $lab
     if (!$stmt->fetch()) {
         json_error(400, "{$label} no existe.");
     }
+}
+
+/** Valor de una lista cerrada (columna ENUM). Si no viene, usa el predeterminado. */
+function field_enum(array $body, string $key, array $permitidos, string $porDefecto): string
+{
+    if (!array_key_exists($key, $body) || $body[$key] === null || $body[$key] === '') {
+        return $porDefecto;
+    }
+
+    $value = strtoupper(trim((string) $body[$key]));
+
+    if (!in_array($value, $permitidos, true)) {
+        json_error(400, "El campo {$key} solo acepta: " . implode(', ', $permitidos) . '.');
+    }
+
+    return $value;
 }
 
 /** Telefono: solo digitos, +, guiones y espacios; 7 a 15 caracteres (VARCHAR(15)). */

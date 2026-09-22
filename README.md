@@ -2,7 +2,15 @@
 
 Backend REST en PHP puro (PDO + prepared statements) para el proyecto de la ferretería. Expone CRUD completo sobre productos, clientes, empleados, categorías, proveedores y ventas, más un endpoint de reportes que ejecuta procedimientos almacenados y consultas agrupadas, contra una base de datos MariaDB.
 
-Este repo es **público** y solo tiene el código fuente. Las credenciales reales (password de la base de datos y API key) están en `inc/db.php` como placeholders — nunca se suben aquí. Viven únicamente en el servidor.
+Este repo tiene **solo el código fuente**. Las credenciales reales (password de la base de datos y API key) están en `inc/db.php` como placeholders y nunca se suben aquí: viven únicamente en el servidor. Eso se mantiene aunque el repositorio sea privado, para que abrirlo al público más adelante no obligue a reescribir el historial.
+
+Repos del proyecto:
+
+| Repo | Contiene |
+|---|---|
+| `ferreteria-api` | Este: backend PHP y scripts SQL |
+| `ferreteria-app` | App Android (Kotlin + Jetpack Compose) |
+| `ferreteria-api-docs` | Documentación de integración y modelo de datos |
 
 ## Stack
 

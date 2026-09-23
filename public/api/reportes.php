@@ -114,7 +114,7 @@ function ventasDelDia(PDO $pdo): array
     ];
 }
 
-/** sp_clientes_vigentes_trimestre: 1 de enero al 31 de marzo del anio pedido. */
+/** sp_clientes_vigentes_trimestre: el trimestre pedido del anio pedido. */
 function clientesDelTrimestre(PDO $pdo): array
 {
     $anio = isset($_GET['anio']) ? (string) $_GET['anio'] : date('Y');
@@ -123,14 +123,30 @@ function clientesDelTrimestre(PDO $pdo): array
         json_error(400, 'El parametro anio debe ser un ano entre 2000 y 2100.');
     }
 
-    $stmt = $pdo->prepare('CALL sp_clientes_vigentes_trimestre(:anio)');
-    $stmt->execute(['anio' => (int) $anio]);
+    $trimestre = isset($_GET['trimestre']) ? (string) $_GET['trimestre'] : '1';
+
+    if (!ctype_digit($trimestre) || (int) $trimestre < 1 || (int) $trimestre > 4) {
+        json_error(400, 'El parametro trimestre debe ser 1, 2, 3 o 4.');
+    }
+
+    $anio = (int) $anio;
+    $trimestre = (int) $trimestre;
+
+    $stmt = $pdo->prepare('CALL sp_clientes_vigentes_trimestre(:anio, :trimestre)');
+    $stmt->execute(['anio' => $anio, 'trimestre' => $trimestre]);
     $filas = $stmt->fetchAll();
     $stmt->closeCursor();
 
+    // El ultimo dia del trimestre se calcula con 't', que devuelve los dias del
+    // mes: evita tener que recordar cual mes tiene 30, 31 o 28.
+    $mesInicio = ($trimestre - 1) * 3 + 1;
+    $inicio = sprintf('%04d-%02d-01', $anio, $mesInicio);
+    $fin = date('Y-m-t', (int) strtotime(sprintf('%04d-%02d-01', $anio, $mesInicio + 2)));
+
     return [
-        'anio' => (int) $anio,
-        'periodo' => "01/01/{$anio} al 31/03/{$anio}",
+        'anio' => $anio,
+        'trimestre' => $trimestre,
+        'periodo' => date('d/m/Y', (int) strtotime($inicio)) . ' al ' . date('d/m/Y', (int) strtotime($fin)),
         'clientes' => array_map(static function (array $c): array {
             $c['id_cliente'] = (int) $c['id_cliente'];
             $c['pedidos'] = (int) $c['pedidos'];

@@ -168,7 +168,7 @@ Todos requieren el header `X-API-Key`. Todas las respuestas son JSON.
 | `tipo` | Qué devuelve | De dónde sale |
 |---|---|---|
 | `ventas-dia&fecha=AAAA-MM-DD` | Desglose de las ventas del día y su suma | `sp_ventas_del_dia` |
-| `clientes-trimestre&anio=2026` | Clientes con pedidos del 1 de enero al 31 de marzo | `sp_clientes_vigentes_trimestre` |
+| `clientes-trimestre&anio=2026&trimestre=1` | Clientes con pedidos en el trimestre indicado (1 a 4) | `sp_clientes_vigentes_trimestre` |
 | `top-productos` | Productos ordenados por piezas vendidas | `GROUP BY` sobre `DETALLE_VENTA` |
 | `ventas-por-canal` | Monto y porcentaje por canal de compra | `GROUP BY` sobre `VENTA.canal` |
 | `directorio` | Clientes y empleados en una sola lista | `UNION` |
@@ -230,7 +230,7 @@ Viven en `sql/02-programabilidad.sql`.
 | Objeto | Qué hace |
 |---|---|
 | `sp_ventas_del_dia(fecha)` | Devuelve dos resultados: el desglose de las ventas de esa fecha y el resumen con la suma, el ticket promedio y la venta mayor |
-| `sp_clientes_vigentes_trimestre(anio)` | Clientes que compraron entre el 1 de enero y el 31 de marzo, con su número de pedidos y monto |
+| `sp_clientes_vigentes_trimestre(anio, trimestre)` | Clientes que compraron en el trimestre indicado, con su número de pedidos y monto. El trimestre 1 corresponde al periodo del 1 de enero al 31 de marzo que pide el proyecto |
 | `sp_alta_cliente(...)` | Da de alta un cliente y **atrapa la violación de la restricción única** de `email_cliente`: devuelve `codigo = 1062` y un mensaje en vez de tronar |
 | `trg_producto_no_duplicado_ins/upd` | Impiden que un mismo proveedor tenga dos productos con el mismo nombre, al insertar y al actualizar |
 | `trg_venta_seguimiento` | Con cada venta de canal `APP` o `WEB`, escribe nombre del cliente, fecha y hora en `SEGUIMIENTO_CLIENTE` |

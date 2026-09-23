@@ -63,19 +63,36 @@ BEGIN
 END$$
 
 -- ---------------------------------------------------------
--- 2. Clientes vigentes del primer trimestre
+-- 2. Clientes vigentes de un trimestre
 --
--- "Del 1 de enero al 31 de marzo". Se usa un intervalo semiabierto
--- (>= 1-ene AND < 1-abr) en lugar de BETWEEN '01-01' AND '03-31': con BETWEEN
--- sobre un DATETIME se perderian las ventas del 31 de marzo despues de las
--- 00:00:00, porque '2026-03-31' equivale a '2026-03-31 00:00:00'.
+-- El reto pide el primer trimestre, "del 1 de enero al 31 de marzo", que es
+-- p_trimestre = 1. El parametro permite consultar cualquiera de los cuatro sin
+-- duplicar el procedimiento.
+--
+-- El rango se arma con un intervalo semiabierto (>= inicio AND < inicio + 3
+-- meses) en lugar de BETWEEN. Con BETWEEN '2026-01-01' AND '2026-03-31' sobre
+-- una columna DATETIME se perderian todas las ventas del 31 de marzo posteriores
+-- a las 00:00:00, porque esa fecha equivale a '2026-03-31 00:00:00'.
+--
+-- Ademas el intervalo semiabierto no necesita saber cuantos dias tiene el ultimo
+-- mes del trimestre: marzo tiene 31, junio 30, y febrero cambia segun el ano.
 -- ---------------------------------------------------------
-CREATE PROCEDURE sp_clientes_vigentes_trimestre(IN p_anio INT)
+CREATE PROCEDURE sp_clientes_vigentes_trimestre(IN p_anio INT, IN p_trimestre INT)
 BEGIN
     DECLARE v_inicio DATE;
     DECLARE v_fin    DATE;
+    DECLARE v_trim   INT;
 
-    SET v_inicio = MAKEDATE(p_anio, 1);
+    SET v_trim = IFNULL(p_trimestre, 1);
+
+    IF v_trim < 1 OR v_trim > 4 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'El trimestre debe estar entre 1 y 4.';
+    END IF;
+
+    -- El trimestre 1 empieza en enero, el 2 en abril, el 3 en julio y el 4 en
+    -- octubre: tres meses de corrimiento por cada trimestre transcurrido.
+    SET v_inicio = DATE_ADD(MAKEDATE(p_anio, 1), INTERVAL (v_trim - 1) * 3 MONTH);
     SET v_fin    = DATE_ADD(v_inicio, INTERVAL 3 MONTH);
 
     SELECT

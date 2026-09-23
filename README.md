@@ -39,6 +39,7 @@ sql/
   03-datos-muestra.sql    # datos de prueba (5+ registros por tabla)
   04-consultas-avanzadas.sql  # JOIN, UNION, ORDER BY, GROUP BY y fechas
   05-migracion-servidor.sql   # solo para una base que ya está en producción
+  06-datos-adicionales.sql    # catálogo ampliado y 30 ventas más
 ```
 
 `public/` es el DocumentRoot de Apache; `inc/` queda fuera del webroot.
@@ -69,6 +70,7 @@ Instalación desde cero, en este orden:
 mysql -u root -p < sql/01-esquema.sql
 mysql -u root -p ferreteria < sql/02-programabilidad.sql
 mysql -u root -p ferreteria < sql/03-datos-muestra.sql
+mysql -u root -p ferreteria < sql/06-datos-adicionales.sql
 ```
 
 El orden importa: los triggers se crean **antes** de cargar los datos, así el de
@@ -80,7 +82,16 @@ Si la base **ya está corriendo con datos**, no uses `03`: aplica en su lugar
 ```bash
 mysql -u root -p ferreteria < sql/05-migracion-servidor.sql
 mysql -u root -p ferreteria < sql/02-programabilidad.sql
+mysql -u root -p ferreteria < sql/06-datos-adicionales.sql
 ```
+
+`06` amplía el catálogo y agrega treinta ventas repartidas a lo largo del año,
+para que los reportes tengan volumen suficiente. Se puede aplicar tanto a una
+instalación nueva como a una que ya esté corriendo: las ventas no llevan
+identificador fijo, sino que se enganchan con `LAST_INSERT_ID()`, y las
+existencias de los productos que ya existían se ajustan con restas relativas.
+Debe cargarse **después** de `02`, o el trigger de seguimiento no llegará a
+dispararse con esas ventas.
 
 Crea un usuario dedicado para la API (no uses `root`):
 
